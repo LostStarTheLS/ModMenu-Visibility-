@@ -9,6 +9,34 @@ Triple swapping exploits client-side tick timing, weapon reach calculations, and
 
 ---
 
+## Modern Public GUI Library & "Zip Inside" (Jar-in-Jar)
+
+To make the configuration interface look clean, modern, and native to Minecraft, the project integrates **Cloth Config** and bundles it using Fabric's **Jar-in-Jar (JiJ / "zip inside")** packaging:
+
+### 1. Cloth Config Integration
+- **Category Tabs:** Organized into *General & Combat*, *Weapon & Slot Configuration*, and *Visuals & HUD*.
+- **Interactive Controls:** Smooth sliders for reach distance (3.0 – 6.0 blocks) and hotbar slots (1–9), dropdown enum selectors, and item ID text fields.
+- **Rich Hover Tooltips:** Explanations and advice on each setting directly in-game.
+- **Mod Menu Integration:** Accessible directly via Mod Menu's mod settings button or via in-game keybind (`H`).
+
+### 2. Jar-in-Jar (`include` / "Zip Inside")
+In `build.gradle`, Cloth Config is packaged using Loom's `include` directive:
+```gradle
+modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
+    exclude(group: "net.fabricmc.fabric-api")
+}
+// Bundles the library zip/jar inside META-INF/jars of the built mod JAR
+include("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}")
+```
+This means the compiled mod is completely self-contained—users do not need to download separate external library files.
+
+### 3. Graceful Fallback Architecture
+The mod uses `TripleSwappingGuiFactory`:
+- When Cloth Config is present (via JiJ or installed mods), it serves the rich Cloth Config screen.
+- If Cloth Config is absent, it gracefully falls back to the customized built-in `TripleSwappingConfigScreen` without crashing.
+
+---
+
 ## How It Works (The Mechanics)
 
 ### 1. Attribute Recalculation Timing
@@ -38,7 +66,8 @@ Triple swapping exploits client-side tick timing, weapon reach calculations, and
   - **Auto-Detect by Item ID:** Scans your hotbar for items matching queries (e.g., `sword`, `spear`/`trident`, `mace`).
 
 - **In-Game GUI & Mod Menu Support:**
-  - Full graphical configuration screen opened via `H` or through Mod Menu.
+  - Modern Cloth Config screen with category tabs, sliders, and tooltips.
+  - Opened via `H` or through Mod Menu.
   - Adjust reach distance (3.5 to 5.0 blocks).
   - Toggle HUD overlay showing current state and slot chain.
 
@@ -95,41 +124,7 @@ Run Gradle wrapper from the repository root:
 gradlew.bat build
 ```
 
-The compiled mod JAR will be placed in `build/libs/`.
-
----
-
-## Project Structure
-
-```
-├── build.gradle                               # Fabric Loom build configuration
-├── gradle.properties                          # Fabric, Minecraft, and Loom versions
-├── settings.gradle
-├── gradlew / gradlew.bat                      # Gradle wrapper scripts
-├── src/main
-│   ├── java/net/tripleswapping
-│   │   ├── TripleSwappingMod.java             # Main mod initializer
-│   │   ├── TripleSwappingClient.java          # Client initializer & keybinds
-│   │   ├── config
-│   │   │   └── TripleSwappingConfig.java      # Configuration & JSON persistence
-│   │   ├── core
-│   │   │   ├── RaycastHelper.java             # Extended reach raycasting
-│   │   │   └── TripleSwapManager.java         # Sequence state machine & packet logic
-│   │   ├── gui
-│   │   │   ├── ModMenuIntegration.java        # Mod Menu API entrypoint
-│   │   │   └── TripleSwappingConfigScreen.java# In-game settings GUI
-│   │   ├── hud
-│   │   │   └── TripleSwappingHudOverlay.java  # HUD status indicator
-│   │   └── mixin
-│   │       ├── MinecraftClientMixin.java      # Attack input hook
-│   │       └── ClientPlayerInteractionManagerMixin.java
-│   └── resources
-│       ├── fabric.mod.json                    # Fabric mod metadata
-│       ├── triple_swapping.mixins.json        # Mixin configuration
-│       └── assets/triple_swapping
-│           ├── icon.png                       # Mod icon
-│           └── lang/en_us.json                # Localization
-```
+The compiled mod JAR with embedded Cloth Config will be placed in `build/libs/`.
 
 ---
 

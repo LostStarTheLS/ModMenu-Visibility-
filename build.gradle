@@ -20,16 +20,30 @@ repositories {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/releases/"
     }
+    maven {
+        name = "Shedaniel"
+        url = "https://maven.shedaniel.me/"
+    }
 }
 
 dependencies {
-    // To change the versions see the gradle.properties file
+    // Minecraft and Yarn Mappings
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     // Fabric API
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation "net.fabricmc.fabric-api:${project.fabric_version}"
+
+    // Public GUI Library: Cloth Config
+    // modApi allows compiling against Cloth Config API
+    modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
+        exclude(group: "net.fabricmc.fabric-api")
+    }
+
+    // Jar-in-Jar (JiJ): Bundles the library zip/jar inside META-INF/jars of the mod artifact
+    // Users get the rich GUI out-of-the-box without needing external library installs
+    include("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}")
 
     // Mod Menu Integration (optional runtime and compile dependency)
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"

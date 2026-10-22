@@ -9,7 +9,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
 import net.tripleswapping.config.TripleSwappingConfig;
 import net.tripleswapping.core.TripleSwapManager;
-import net.tripleswapping.gui.TripleSwappingConfigScreen;
+import net.tripleswapping.gui.TripleSwappingGuiFactory;
 import net.tripleswapping.hud.TripleSwappingHudOverlay;
 import org.lwjgl.glfw.GLFW;
 
@@ -74,9 +74,9 @@ public class TripleSwappingClient implements ClientModInitializer {
                 TripleSwapManager.getInstance().tryExecuteTripleSwap(client, false);
             }
 
-            // Handle Open Config GUI Key
+            // Handle Open Config GUI Key (Modern Cloth Config screen or fallback)
             while (configKey.wasPressed()) {
-                client.setScreen(new TripleSwappingConfigScreen(client.currentScreen));
+                client.setScreen(TripleSwappingGuiFactory.createScreen(client.currentScreen));
             }
         });
 
