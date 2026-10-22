@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "triple_swapping",
+  "version": "${version}",
+  "name": "Triple Swapping",
+  "description": "A client-side mod implementing the triple swapping technique: combining initial item attributes, secondary item reach (e.g. spear/extended reach), and tertiary item combat properties with customizable timing and item selectors.",
+  "authors": [
+    "LostStarTheLS"
+  ],
+  "contact": {
+    "homepage": "https://github.com/LostStarTheLS/ModMenu-Visibility-",
+    "sources": "https://github.com/LostStarTheLS/ModMenu-Visibility-"
+  },
+  "license": "MIT",
+  "icon": "assets/triple_swapping/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "net.tripleswapping.TripleSwappingMod"
+    ],
+    "client": [
+      "net.tripleswapping.TripleSwappingClient"
+    ],
+    "modmenu": [
+      "net.tripleswapping.gui.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "triple_swapping.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": ">=1.21 <=1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

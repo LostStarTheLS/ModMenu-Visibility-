@@ -1,3 +1,28 @@
-# Build folder and log file
+# Build folders and artifacts
 build/
-build.log
+.gradle/
+out/
+bin/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+
+# Run directories
+run/
+run-client/
+run-server/
+
+# Crash reports and logs
+logs/
+crash-reports/
+
+# OS specific files
+.DS_Store
+Thumbs.db
