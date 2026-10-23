@@ -28,6 +28,10 @@ repositories {
         name = "Shedaniel"
         url = "https://maven.shedaniel.me/"
     }
+    maven {
+        name = "Nucleoid"
+        url = "https://maven.nucleoid.xyz/"
+    }
 }
 
 dependencies {
