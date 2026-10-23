@@ -3,7 +3,7 @@
   "id": "triple_swapping",
   "version": "${version}",
   "name": "Triple Swapping",
-  "description": "A client-side mod implementing the triple swapping technique: combining initial item attributes, secondary item reach (e.g. spear/extended reach), and tertiary item combat properties with customizable timing and item selectors.",
+  "description": "A client-side Fabric mod for Minecraft 1.21.11 implementing the triple swapping combat technique: combining start-of-tick weapon attributes (e.g. Sword), intermediate Spear AttackRangeComponent extended reach (4.5m + hitbox margin), and finishing weapon impact & enchantments (e.g. Mace).",
   "authors": [
     "LostStarTheLS"
   ],
@@ -29,13 +29,13 @@
     "triple_swapping.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.0",
-    "minecraft": ">=1.21 <=1.21.11",
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
     "java": ">=21",
     "fabric-api": "*"
   },
   "suggests": {
-    "modmenu": "*",
-    "cloth-config": "*"
+    "modmenu": ">=17.0.0",
+    "cloth-config": ">=21.11.0"
   }
 }

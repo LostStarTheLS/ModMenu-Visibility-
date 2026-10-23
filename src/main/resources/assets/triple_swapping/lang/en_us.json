@@ -1,7 +1,8 @@
 {
   "modmenu.nameTranslation.triple_swapping": "Triple Swapping",
-  "modmenu.descriptionTranslation.triple_swapping": "Execute triple weapon swapping to combine start attributes, reach weapon range, and end weapon damage.",
+  "modmenu.descriptionTranslation.triple_swapping": "Execute 1.21.11 triple weapon swapping to combine start-of-tick attributes, Spear extended reach (4.5m + hitbox margin), and finishing weapon damage & enchantments.",
   "key.category.triple_swapping": "Triple Swapping",
+  "key.category.triple_swapping.main": "Triple Swapping",
   "key.triple_swapping.toggle": "Toggle Triple Swapping",
   "key.triple_swapping.execute": "Trigger Triple Swap Attack",
   "key.triple_swapping.config": "Open Triple Swapping Config",
@@ -10,44 +11,56 @@
   "category.triple_swapping.weapons": "Weapon & Slot Configuration",
   "category.triple_swapping.visuals": "Visuals & HUD",
 
-  "text.triple_swapping.title": "Triple Swapping Configuration",
+  "text.triple_swapping.title": "Triple Swapping Configuration (1.21.11)",
   "text.triple_swapping.enabled": "Enable Triple Swapping",
-  "tooltip.triple_swapping.enabled": "Master toggle for the triple swapping mechanics.",
-  
+  "tooltip.triple_swapping.enabled": "Master toggle for 1.21.11 triple swapping mechanics.",
+
   "text.triple_swapping.trigger_mode": "Trigger Activation Mode",
-  "tooltip.triple_swapping.trigger_mode": "Choose when triple swapping is triggered:\n• Only When Target > 3 Blocks: Seamless mode; only swaps if target is out of normal range (3.0-4.5 blocks)\n• On Attack: Always swaps on attack\n• Dedicated Keybind: Swaps on pressing the execute key (default: R)\n• Hold Trigger Key: Swaps when attacking while holding the key",
+  "tooltip.triple_swapping.trigger_mode": "Choose when triple swapping is triggered:\n• Only When Target > 3 Blocks: Seamless mode; only swaps if target is out of normal range (3.0–4.5 blocks)\n• On Attack: Always executes triple swap on attack\n• Dedicated Keybind: Swaps on pressing the execute key (default: R)\n• Hold Trigger Key: Swaps continuously when attacking/holding the trigger key",
   "text.triple_swapping.trigger_mode.on_attack": "On Attack",
   "text.triple_swapping.trigger_mode.keybind": "On Dedicated Keybind",
   "text.triple_swapping.trigger_mode.hold_key": "While Holding Key",
   "text.triple_swapping.trigger_mode.out_of_range": "Only When Target > 3 Blocks",
 
   "text.triple_swapping.slot_mode": "Item Selection Mode",
-  "tooltip.triple_swapping.slot_mode": "Choose how weapons are located in your inventory:\n• Fixed Hotbar Slot: Uses explicit hotbar slots (1-9)\n• Auto-Detect Item in Hotbar: Dynamically searches hotbar for matching item IDs",
+  "tooltip.triple_swapping.slot_mode": "Choose how weapons are located on your hotbar:\n• Fixed Hotbar Slot: Uses explicit hotbar slots (1–9)\n• Auto-Detect Item in Hotbar: Automatically finds matching 1.21.11 weapons (prioritizing highest tier)",
   "text.triple_swapping.slot_mode.hotbar_slots": "Fixed Hotbar Slots",
   "text.triple_swapping.slot_mode.item_ids": "Auto-Detect By Item ID",
 
   "text.triple_swapping.start_slot": "Step 1: Start Item Hotbar Slot",
-  "tooltip.triple_swapping.start_slot": "Hotbar slot index for the start item (Sword). Provides start-of-tick attributes like base damage & attack speed.",
+  "tooltip.triple_swapping.start_slot": "Hotbar slot (1–9) for the start item (e.g. Netherite/Diamond Sword). Provides start-of-tick attributes like attack damage & attack speed.",
   "text.triple_swapping.reach_slot": "Step 2: Reach Item Hotbar Slot",
-  "tooltip.triple_swapping.reach_slot": "Hotbar slot index for the intermediate item (Spear/Trident). Provides extended targeted entity reach.",
-  "text.triple_swapping.attack_slot": "Step 3: Attack Item Hotbar Slot",
-  "tooltip.triple_swapping.attack_slot": "Hotbar slot index for the finishing weapon (Mace). Applies enchantments and impact smash damage.",
+  "tooltip.triple_swapping.reach_slot": "Hotbar slot (1–9) for the reach weapon (1.21.11 Spear). Provides 4.5-block extended reach and +0.125 hitbox margin.",
+  "text.triple_swapping.attack_slot": "Step 3: Finishing Item Hotbar Slot",
+  "tooltip.triple_swapping.attack_slot": "Hotbar slot (1–9) for the finishing weapon (e.g. Mace / Axe). Applies smash bonus damage, Breach/Density/Wind Burst enchantments, or shield stun.",
 
   "text.triple_swapping.start_item_id": "Step 1: Start Item Identifier",
-  "tooltip.triple_swapping.start_item_id": "Item ID or keyword to search for the start attribute weapon (e.g., 'minecraft:diamond_sword').",
+  "tooltip.triple_swapping.start_item_id": "Item ID or keyword for the start attribute weapon (e.g., 'sword' or 'minecraft:netherite_sword').",
   "text.triple_swapping.reach_item_id": "Step 2: Reach Item Identifier",
-  "tooltip.triple_swapping.reach_item_id": "Item ID or keyword to search for the reach weapon (e.g., 'spear' or 'minecraft:trident').",
-  "text.triple_swapping.attack_item_id": "Step 3: Attack Item Identifier",
-  "tooltip.triple_swapping.attack_item_id": "Item ID or keyword to search for the finishing weapon (e.g., 'minecraft:mace').",
+  "tooltip.triple_swapping.reach_item_id": "Item ID or keyword for the 1.21.11 reach weapon (e.g., 'spear' or 'minecraft:netherite_spear'). Automatically checks AttackRangeComponent.",
+  "text.triple_swapping.attack_item_id": "Step 3: Finishing Item Identifier",
+  "tooltip.triple_swapping.attack_item_id": "Item ID or keyword for the finishing impact weapon (e.g., 'minecraft:mace' or 'axe').",
+
+  "text.triple_swapping.use_attack_range_component": "Use Item AttackRangeComponent",
+  "tooltip.triple_swapping.use_attack_range_component": "Reads the 1.21.11 minecraft:attack_range component directly from the reach item stack (e.g., 4.5m survival / 6.5m creative & 0.125 hitbox margin on Spears), using Custom Reach Distance when higher or no component is present.",
 
   "text.triple_swapping.reach_distance": "Extended Reach Distance",
-  "tooltip.triple_swapping.reach_distance": "The simulated reach distance in blocks during client-side target calculation (default: 4.5 blocks).",
+  "tooltip.triple_swapping.reach_distance": "Target acquisition distance in blocks during extended reach raycasting (default: 4.5 blocks, matching 1.21.11 Spears).",
+
+  "text.triple_swapping.hitbox_margin": "Target Hitbox Margin",
+  "tooltip.triple_swapping.hitbox_margin": "Extra bounding box expansion in blocks during raycasting (default: 0.125 blocks, matching 1.21.11 Spear hitbox_margin).",
+
+  "text.triple_swapping.auto_swap_back": "Auto Swap Back to Start Slot",
+  "tooltip.triple_swapping.auto_swap_back": "Automatically returns selection back to Step 1 (Start Slot) after attacking so start-of-tick Sword attributes stay active for consecutive hits.",
+
+  "text.triple_swapping.swap_back_delay": "Swap Back Delay (Ticks)",
+  "tooltip.triple_swapping.swap_back_delay": "Ticks to wait before switching back to Start Slot (0 = immediate same-tick ghost return, 1 = next-tick authentic hotkey timing).",
 
   "text.triple_swapping.client_delay": "Transition Window (ms)",
-  "tooltip.triple_swapping.client_delay": "Delay window in milliseconds for the slot transition packets (default: 50ms = 1 game tick).",
+  "tooltip.triple_swapping.client_delay": "Minimum cooldown window in milliseconds between automated triple swap sequences (default: 50ms = 1 game tick).",
 
   "text.triple_swapping.hud_indicator": "Show HUD Overlay",
-  "tooltip.triple_swapping.hud_indicator": "Displays a non-intrusive status indicator on the game HUD showing mode and active slot chain.",
+  "tooltip.triple_swapping.hud_indicator": "Displays a modern status pill card and dynamic target reach HUD showing live weapon icons, slot chain, and range bracket.",
 
   "text.triple_swapping.save": "Save & Close",
   "text.triple_swapping.reset": "Reset to Defaults",

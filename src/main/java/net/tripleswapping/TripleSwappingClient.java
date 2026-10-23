@@ -3,10 +3,12 @@ package net.tripleswapping;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.tripleswapping.config.TripleSwappingConfig;
 import net.tripleswapping.core.TripleSwapManager;
 import net.tripleswapping.gui.TripleSwappingGuiFactory;
@@ -14,75 +16,82 @@ import net.tripleswapping.hud.TripleSwappingHudOverlay;
 import org.lwjgl.glfw.GLFW;
 
 public class TripleSwappingClient implements ClientModInitializer {
-    public static final String KEY_CATEGORY = "key.category.triple_swapping";
+    public static final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category.create(
+            Identifier.of(TripleSwappingMod.MOD_ID, "main")
+    );
 
-    public static KeyBinding toggleKey;
-    public static KeyBinding executeKey;
-    public static KeyBinding configKey;
+    public static final Identifier HUD_LAYER_ID = Identifier.of(TripleSwappingMod.MOD_ID, "hud_overlay");
+
+    public static KeyBinding toggleModKey;
+    public static KeyBinding executeSwapKey;
+    public static KeyBinding openConfigKey;
 
     @Override
     public void onInitializeClient() {
-        TripleSwappingConfig.get(); // Initialize config
-
-        // Register Keybindings
-        toggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        toggleModKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.triple_swapping.toggle",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_V,
                 KEY_CATEGORY
         ));
 
-        executeKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        executeSwapKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.triple_swapping.execute",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
                 KEY_CATEGORY
         ));
 
-        configKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        openConfigKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.triple_swapping.config",
                 InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_H,
+                GLFW.GLFW_KEY_O,
                 KEY_CATEGORY
         ));
 
-        // Client Tick Handler for key input
+        HudElementRegistry.attachElementBefore(
+                VanillaHudElements.CHAT,
+                HUD_LAYER_ID,
+                new TripleSwappingHudOverlay()
+        );
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.player == null) return;
+            if (client.player == null) {
+                TripleSwapManager.getInstance().resetPendingState();
+                return;
+            }
 
-            TripleSwappingConfig config = TripleSwappingConfig.get();
+            TripleSwapManager.getInstance().onClientTick(client);
 
-            // Handle Toggle Key
-            while (toggleKey.wasPressed()) {
+            while (toggleModKey.wasPressed()) {
+                TripleSwappingConfig config = TripleSwappingConfig.getInstance();
                 config.enabled = !config.enabled;
-                config.save();
-                client.player.sendMessage(
-                        Text.literal("§7[Triple Swapping] §r" + (config.enabled ? "§aEnabled" : "§cDisabled")),
-                        true
-                );
+                TripleSwappingConfig.save();
+
+                String messageKey = config.enabled
+                        ? "text.triple_swapping.status_enabled"
+                        : "text.triple_swapping.status_disabled";
+                client.player.sendMessage(Text.translatable(messageKey), true);
             }
 
-            // Handle Manual Execute Key
-            while (executeKey.wasPressed()) {
-                if (config.enabled) {
-                    TripleSwapManager.getInstance().tryExecuteTripleSwap(client, false);
+            while (openConfigKey.wasPressed()) {
+                client.setScreen(TripleSwappingGuiFactory.createConfigScreen(client.currentScreen));
+            }
+
+            TripleSwappingConfig config = TripleSwappingConfig.getInstance();
+            if (config.enabled) {
+                if (config.triggerMode == TripleSwappingConfig.TriggerMode.KEYBIND) {
+                    while (executeSwapKey.wasPressed()) {
+                        TripleSwapManager.getInstance().attemptKeybindSwap(client);
+                    }
+                } else if (config.triggerMode == TripleSwappingConfig.TriggerMode.HOLD_KEY) {
+                    if (executeSwapKey.isPressed() && client.player.getAttackCooldownProgress(0.5f) >= 0.9f) {
+                        TripleSwapManager.getInstance().attemptKeybindSwap(client);
+                    }
                 }
-            }
-
-            // Handle Hold Key Trigger Mode
-            if (config.enabled && config.triggerMode == TripleSwappingConfig.TriggerMode.HOLD_KEY && executeKey.isPressed()) {
-                TripleSwapManager.getInstance().tryExecuteTripleSwap(client, false);
-            }
-
-            // Handle Open Config GUI Key (Modern Cloth Config screen or fallback)
-            while (configKey.wasPressed()) {
-                client.setScreen(TripleSwappingGuiFactory.createScreen(client.currentScreen));
             }
         });
 
-        // Register HUD Render Callback
-        HudRenderCallback.EVENT.register(new TripleSwappingHudOverlay());
-
-        TripleSwappingMod.LOGGER.info("[{}] Client initialized successfully.", TripleSwappingMod.MOD_NAME);
+        TripleSwappingMod.LOGGER.info("Triple Swapping Client (1.21.11) initialized successfully!");
     }
 }

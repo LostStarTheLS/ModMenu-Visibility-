@@ -2,30 +2,19 @@ package net.tripleswapping.gui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.screen.Screen;
+import net.tripleswapping.TripleSwappingMod;
 
 public class TripleSwappingGuiFactory {
 
-    /**
-     * Creates the modern Cloth Config screen if available in classpath / bundled via JiJ,
-     * otherwise falls back to the native built-in screen.
-     */
-    public static Screen createScreen(Screen parent) {
-        if (FabricLoader.getInstance().isModLoaded("cloth-config") || hasClothConfigClass()) {
+    public static Screen createConfigScreen(Screen parent) {
+        if (FabricLoader.getInstance().isModLoaded("cloth-config")
+                || FabricLoader.getInstance().isModLoaded("cloth-config2")) {
             try {
-                return ClothConfigScreenHelper.createConfigScreen(parent);
-            } catch (Throwable ignored) {
-                // Fallback to built-in screen if any reflection/runtime issue arises
+                return ClothConfigScreenHelper.createClothConfigScreen(parent);
+            } catch (Throwable t) {
+                TripleSwappingMod.LOGGER.warn("Cloth Config GUI failed to instantiate, falling back to vanilla screen.", t);
             }
         }
         return new TripleSwappingConfigScreen(parent);
-    }
-
-    private static boolean hasClothConfigClass() {
-        try {
-            Class.forName("me.shedaniel.clothconfig2.api.ConfigBuilder");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
     }
 }

@@ -2,171 +2,175 @@ package net.tripleswapping.gui;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 import net.tripleswapping.config.TripleSwappingConfig;
 
-/**
- * Built-in vanilla screen fallback that provides a sleek, modern UI
- * with header/footer accents, contextual tooltips, and interactive setting cyclers.
- */
 public class TripleSwappingConfigScreen extends Screen {
+    private static final int COLOR_WHITE = 0xFFFFFFFF;
+    private static final int COLOR_SUBTITLE = 0xFFAAAAAA;
+
     private final Screen parent;
     private final TripleSwappingConfig config;
 
     public TripleSwappingConfigScreen(Screen parent) {
         super(Text.translatable("text.triple_swapping.title"));
         this.parent = parent;
-        this.config = TripleSwappingConfig.get();
+        this.config = TripleSwappingConfig.getInstance();
     }
 
     @Override
     protected void init() {
-        int centerX = this.width / 2;
-        int startY = 46;
-        int buttonWidth = 240;
-        int buttonHeight = 20;
-        int spacing = 24;
+        int colGap = 8;
+        int colWidth = 152;
+        int totalWidth = colWidth * 2 + colGap;
+        int leftColX = (this.width - totalWidth) / 2;
+        int rightColX = leftColX + colWidth + colGap;
+        int y = 44;
+        int rowSpacing = 24;
 
-        // Toggle Enabled
-        ButtonWidget enabledBtn = ButtonWidget.builder(
-                Text.literal("Mod Status: " + (config.enabled ? "§aENABLED§r" : "§cDISABLED§r")),
-                button -> {
-                    config.enabled = !config.enabled;
-                    button.setMessage(Text.literal("Mod Status: " + (config.enabled ? "§aENABLED§r" : "§cDISABLED§r")));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.enabled")))
-         .build();
-        this.addDrawableChild(enabledBtn);
+        // Row 1: Master Toggle | HUD Overlay
+        this.addDrawableChild(ButtonWidget.builder(getEnabledText(), button -> {
+            config.enabled = !config.enabled;
+            button.setMessage(getEnabledText());
+        }).dimensions(leftColX, y, colWidth, 20).build());
 
-        // Trigger Mode
-        ButtonWidget triggerBtn = ButtonWidget.builder(
-                Text.literal("Trigger: §b" + config.triggerMode.getDisplayName() + "§r"),
-                button -> {
-                    config.triggerMode = config.triggerMode.next();
-                    button.setMessage(Text.literal("Trigger: §b" + config.triggerMode.getDisplayName() + "§r"));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.trigger_mode")))
-         .build();
-        this.addDrawableChild(triggerBtn);
+        this.addDrawableChild(ButtonWidget.builder(getHudText(), button -> {
+            config.showHudIndicator = !config.showHudIndicator;
+            button.setMessage(getHudText());
+        }).dimensions(rightColX, y, colWidth, 20).build());
+        y += rowSpacing;
 
-        // Selection Mode
-        ButtonWidget selectionBtn = ButtonWidget.builder(
-                Text.literal("Item Selection: §e" + config.selectionMode.getDisplayName() + "§r"),
-                button -> {
-                    config.selectionMode = config.selectionMode.next();
-                    button.setMessage(Text.literal("Item Selection: §e" + config.selectionMode.getDisplayName() + "§r"));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 2, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.slot_mode")))
-         .build();
-        this.addDrawableChild(selectionBtn);
+        // Row 2: Trigger Mode | Slot Selection Mode
+        this.addDrawableChild(ButtonWidget.builder(getTriggerModeText(), button -> {
+            TripleSwappingConfig.TriggerMode[] modes = TripleSwappingConfig.TriggerMode.values();
+            config.triggerMode = modes[(config.triggerMode.ordinal() + 1) % modes.length];
+            button.setMessage(getTriggerModeText());
+        }).dimensions(leftColX, y, colWidth, 20).build());
 
-        // Step 1: Start Item Slot (Attributes)
-        ButtonWidget slot1Btn = ButtonWidget.builder(
-                Text.literal(String.format("Step 1 (Attributes): §6Slot %d§r", config.startSlot + 1)),
-                button -> {
-                    config.startSlot = (config.startSlot + 1) % 9;
-                    button.setMessage(Text.literal(String.format("Step 1 (Attributes): §6Slot %d§r", config.startSlot + 1)));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 3, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.start_slot")))
-         .build();
-        this.addDrawableChild(slot1Btn);
+        this.addDrawableChild(ButtonWidget.builder(getSlotModeText(), button -> {
+            TripleSwappingConfig.SlotMode[] modes = TripleSwappingConfig.SlotMode.values();
+            config.slotMode = modes[(config.slotMode.ordinal() + 1) % modes.length];
+            button.setMessage(getSlotModeText());
+        }).dimensions(rightColX, y, colWidth, 20).build());
+        y += rowSpacing;
 
-        // Step 2: Reach Item Slot (Spear range)
-        ButtonWidget slot2Btn = ButtonWidget.builder(
-                Text.literal(String.format("Step 2 (Reach Range): §bSlot %d§r", config.reachSlot + 1)),
-                button -> {
-                    config.reachSlot = (config.reachSlot + 1) % 9;
-                    button.setMessage(Text.literal(String.format("Step 2 (Reach Range): §bSlot %d§r", config.reachSlot + 1)));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 4, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.reach_slot")))
-         .build();
-        this.addDrawableChild(slot2Btn);
+        // Row 3: Step 1 Start Slot | Step 2 Spear Reach Slot
+        this.addDrawableChild(ButtonWidget.builder(getStartSlotText(), button -> {
+            config.startSlot = (config.startSlot % 9) + 1;
+            button.setMessage(getStartSlotText());
+        }).dimensions(leftColX, y, colWidth, 20).build());
 
-        // Step 3: Attack Item Slot (Mace damage/enchantments)
-        ButtonWidget slot3Btn = ButtonWidget.builder(
-                Text.literal(String.format("Step 3 (Finishing Hit): §cSlot %d§r", config.attackSlot + 1)),
-                button -> {
-                    config.attackSlot = (config.attackSlot + 1) % 9;
-                    button.setMessage(Text.literal(String.format("Step 3 (Finishing Hit): §cSlot %d§r", config.attackSlot + 1)));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 5, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.attack_slot")))
-         .build();
-        this.addDrawableChild(slot3Btn);
+        this.addDrawableChild(ButtonWidget.builder(getReachSlotText(), button -> {
+            config.reachSlot = (config.reachSlot % 9) + 1;
+            button.setMessage(getReachSlotText());
+        }).dimensions(rightColX, y, colWidth, 20).build());
+        y += rowSpacing;
 
-        // Reach Distance
-        ButtonWidget reachBtn = ButtonWidget.builder(
-                Text.literal(String.format("Reach Range: §d%.1f blocks§r", config.reachDistance)),
-                button -> {
-                    if (config.reachDistance >= 5.0) {
-                        config.reachDistance = 3.5;
-                    } else {
-                        config.reachDistance += 0.5;
-                    }
-                    button.setMessage(Text.literal(String.format("Reach Range: §d%.1f blocks§r", config.reachDistance)));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 6, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.reach_distance")))
-         .build();
-        this.addDrawableChild(reachBtn);
+        // Row 4: Step 3 Finishing Slot | Extended Reach Distance
+        this.addDrawableChild(ButtonWidget.builder(getAttackSlotText(), button -> {
+            config.attackSlot = (config.attackSlot % 9) + 1;
+            button.setMessage(getAttackSlotText());
+        }).dimensions(leftColX, y, colWidth, 20).build());
 
-        // HUD Indicator Toggle
-        ButtonWidget hudBtn = ButtonWidget.builder(
-                Text.literal("HUD Overlay: " + (config.hudIndicator ? "§aSHOW§r" : "§cHIDE§r")),
-                button -> {
-                    config.hudIndicator = !config.hudIndicator;
-                    button.setMessage(Text.literal("HUD Overlay: " + (config.hudIndicator ? "§aSHOW§r" : "§cHIDE§r")));
-                    config.save();
-                }
-        ).dimensions(centerX - buttonWidth / 2, startY + spacing * 7, buttonWidth, buttonHeight)
-         .tooltip(Tooltip.of(Text.translatable("tooltip.triple_swapping.hud_indicator")))
-         .build();
-        this.addDrawableChild(hudBtn);
+        this.addDrawableChild(ButtonWidget.builder(getReachDistText(), button -> {
+            double next = Math.round((config.reachDistance + 0.5) * 10.0) / 10.0;
+            if (next > 6.5) next = 3.5;
+            config.reachDistance = next;
+            button.setMessage(getReachDistText());
+        }).dimensions(rightColX, y, colWidth, 20).build());
+        y += rowSpacing;
 
-        // Done button
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("§aDone & Save§r"),
-                button -> this.close()
-        ).dimensions(centerX - 100, this.height - 30, 200, 20).build());
+        // Row 5: 1.21.11 AttackRangeComponent Toggle | Auto Swap Back to Start Slot
+        this.addDrawableChild(ButtonWidget.builder(getComponentRangeText(), button -> {
+            config.useItemAttackRangeComponent = !config.useItemAttackRangeComponent;
+            button.setMessage(getComponentRangeText());
+        }).dimensions(leftColX, y, colWidth, 20).build());
+
+        this.addDrawableChild(ButtonWidget.builder(getAutoSwapBackText(), button -> {
+            config.autoSwapBack = !config.autoSwapBack;
+            button.setMessage(getAutoSwapBackText());
+        }).dimensions(rightColX, y, colWidth, 20).build());
+
+        // Bottom Footer Buttons
+        int footerY = Math.max(y + 32, this.height - 28);
+        this.addDrawableChild(ButtonWidget.builder(Text.translatable("text.triple_swapping.reset"), button -> {
+            config.resetToDefaults();
+            this.clearAndInit();
+        }).dimensions(leftColX, footerY, colWidth, 20).build());
+
+        this.addDrawableChild(ButtonWidget.builder(ScreenTexts.DONE, button -> close())
+                .dimensions(rightColX, footerY, colWidth, 20)
+                .build());
+    }
+
+    private Text getEnabledText() {
+        return Text.literal("Triple Swap: " + (config.enabled ? "§aON" : "§cOFF"));
+    }
+
+    private Text getHudText() {
+        return Text.literal("HUD Overlay: " + (config.showHudIndicator ? "§aON" : "§cOFF"));
+    }
+
+    private Text getTriggerModeText() {
+        String label = switch (config.triggerMode) {
+            case ON_ATTACK -> "On Attack";
+            case KEYBIND -> "Keybind";
+            case HOLD_KEY -> "Hold Key";
+            case OUT_OF_NORMAL_RANGE -> ">3m Auto";
+        };
+        return Text.literal("Trigger: §e" + label);
+    }
+
+    private Text getSlotModeText() {
+        String label = config.slotMode == TripleSwappingConfig.SlotMode.HOTBAR_SLOTS ? "Hotbar Slots" : "Auto Item ID";
+        return Text.literal("Selection: §b" + label);
+    }
+
+    private Text getStartSlotText() {
+        return Text.literal("Step 1 (Start): §aSlot " + config.startSlot);
+    }
+
+    private Text getReachSlotText() {
+        return Text.literal("Step 2 (Spear): §bSlot " + config.reachSlot);
+    }
+
+    private Text getAttackSlotText() {
+        return Text.literal("Step 3 (Finish): §6Slot " + config.attackSlot);
+    }
+
+    private Text getReachDistText() {
+        return Text.literal(String.format("Reach Cap: §d%.1f blocks", config.reachDistance));
+    }
+
+    private Text getComponentRangeText() {
+        return Text.literal("Spear Range Data: " + (config.useItemAttackRangeComponent ? "§aON" : "§cOFF"));
+    }
+
+    private Text getAutoSwapBackText() {
+        return Text.literal("Auto Return Slot: " + (config.autoSwapBack ? "§aON" : "§cOFF"));
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+        // Note: In Minecraft 1.21.6–1.21.11, super.render(...) automatically invokes renderBackground(...) once per frame.
+        super.render(context, mouseX, mouseY, deltaTicks);
+        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 14, COLOR_WHITE);
+        context.drawCenteredTextWithShadow(
+                this.textRenderer,
+                Text.literal("Sword Attributes › 1.21.11 Spear Reach (4.5m) › Finishing Impact"),
+                this.width / 2,
+                27,
+                COLOR_SUBTITLE
+        );
     }
 
     @Override
     public void close() {
-        config.save();
+        TripleSwappingConfig.save();
         if (this.client != null) {
             this.client.setScreen(this.parent);
         }
-    }
-
-    @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Render custom background darkening
-        this.renderBackground(context, mouseX, mouseY, delta);
-
-        // Header & Footer accent bars
-        context.fill(0, 0, this.width, 36, 0x88000000);
-        context.fill(0, this.height - 38, this.width, this.height, 0x88000000);
-
-        super.render(context, mouseX, mouseY, delta);
-
-        // Title and Subtitle
-        context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 12, 0xFFFFFF);
-        String sub = String.format("§7Chain: §6S%d§7 -> §bS%d§7 -> §cS%d§r",
-                config.startSlot + 1, config.reachSlot + 1, config.attackSlot + 1);
-        context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(sub), this.width / 2, 24, 0xAAAAAA);
     }
 }

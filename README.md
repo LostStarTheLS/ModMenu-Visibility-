@@ -1,133 +1,72 @@
-# Triple Swapping (Minecraft 1.21.1 Fabric Mod)
+# Triple Swapping — Minecraft 1.21.11 Fabric Mod
 
-A client-side Fabric mod template implementing the **Triple Swapping** combat technique for Minecraft 1.21.x (1.21.1 / 1.21.11).
-
-Triple swapping exploits client-side tick timing, weapon reach calculations, and server-side attribute update cycles to combine the benefits of three items into a single attack:
-1. **Initial Item (Attributes):** e.g., Sword (provides start-of-tick attack speed and baseline attributes).
-2. **Intermediate Item (Reach / Range):** e.g., Spear / Trident (provides extended entity reach of ~4.5 blocks, up 50% from the normal 3.0 blocks, and an expanded targeted entity hitbox).
-3. **Finishing Item (Impact / Enchantments):** e.g., Mace (applies heavy smash damage, enchantments, and impact properties).
+A client-side Fabric mod for **Minecraft 1.21.11 ("Mounts of Mayhem")** that automates and visualizes the **Triple Swapping** combat technique: combining start-of-tick weapon attributes (e.g., **Sword** attack damage & attack speed), intermediate **1.21.11 Spear** extended reach (`minecraft:attack_range` — **4.5 blocks** + **0.125 hitbox margin**), and finishing weapon impact & enchantments (e.g., **Mace** Smash / Breach / Density / Wind Burst).
 
 ---
 
-## Modern Public GUI Library & "Zip Inside" (Jar-in-Jar)
+## How Triple Swapping Works in Minecraft 1.21.11
 
-To make the configuration interface look clean, modern, and native to Minecraft, the project integrates **Cloth Config** and bundles it using Fabric's **Jar-in-Jar (JiJ / "zip inside")** packaging:
+Minecraft **1.21.11** introduced vanilla **Spears** (`netherite_spear`, `diamond_spear`, `iron_spear`, `copper_spear`, `stone_spear`, `golden_spear`, `wooden_spear`) powered by the `minecraft:attack_range` (`AttackRangeComponent`) data component:
+- **Survival Spear Reach**: `min_range = 2.0`, `max_range = 4.5` blocks (`6.5` in Creative), `hitbox_margin = 0.125` blocks.
+- **Server Equipment Update Timing**: On the server, `PlayerInteractEntityC2SPacket` (`attack`) runs synchronously when received during packet handling—**before** `LivingEntity#sendEquipmentChanges()` recalculates main-hand attribute modifiers at the end of the entity tick.
 
-### 1. Cloth Config Integration
-- **Category Tabs:** Organized into *General & Combat*, *Weapon & Slot Configuration*, and *Visuals & HUD*.
-- **Interactive Controls:** Smooth sliders for reach distance (3.0 – 6.0 blocks) and hotbar slots (1–9), dropdown enum selectors, and item ID text fields.
-- **Rich Hover Tooltips:** Explanations and advice on each setting directly in-game.
-- **Mod Menu Integration:** Accessible directly via Mod Menu's mod settings button or via in-game keybind (`H`).
-
-### 2. Jar-in-Jar (`include` / "Zip Inside")
-In `build.gradle`, Cloth Config is packaged using Loom's `include` directive:
-```gradle
-modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
-    exclude(group: "net.fabricmc.fabric-api")
-}
-// Bundles the library zip/jar inside META-INF/jars of the built mod JAR
-include("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}")
-```
-This means the compiled mod is completely self-contained—users do not need to download separate external library files.
-
-### 3. Graceful Fallback Architecture
-The mod uses `TripleSwappingGuiFactory`:
-- When Cloth Config is present (via JiJ or installed mods), it serves the rich Cloth Config screen.
-- If Cloth Config is absent, it gracefully falls back to the customized built-in `TripleSwappingConfigScreen` without crashing.
-
----
-
-## How It Works (The Mechanics)
-
-### 1. Attribute Recalculation Timing
-* At the beginning of each game tick, the server recalculates entity attributes via equipment update checks (`detectEquipmentUpdates`).
-* When an attack is processed, the server computes attributes based on what was held at the start of that tick, but evaluates weapon enchantments and properties based on the currently selected item packet received with the attack.
-
-### 2. The 50ms (1-Tick) Execution Window
-1. **Tick Start:** Player has Item 1 (Sword) selected. The server records Sword attributes.
-2. **Pre-Raycast Transition:** The client switches active hotbar focus to Item 2 (Spear) client-side before sending the network update packet.
-3. **Target Calculation:** The client performs targeted entity raycasting using the spear's extended reach (up to 4.5 blocks).
-4. **Packet Dispatch & Attack:** The client switches to Item 3 (Mace), dispatches `UpdateSelectedSlotC2SPacket(attackSlot)` and immediately sends `PlayerInteractEntityC2SPacket.attack(target)`.
-5. **Server Resolution:** The server evaluates the attack: it sees the player holding the Mace, attacks the target acquired via Spear range, and retains the Sword's attack attributes.
+When a **Triple Swap** executes within a single tick window:
+1. **Step 1 — Start Item (e.g., Netherite Sword)**: Held at the end of the prior tick so the server caches its `attack_damage` and fast `attack_speed` attributes.
+2. **Step 2 — Reach Item (1.21.11 Spear)**: Raycasts with `AttackRangeComponent` (`4.5m` reach + `0.125` expanded hitbox margin, ignoring the `0–2.0m` close-range jab restriction when combining weapons) and sends `UpdateSelectedSlotC2SPacket(reachSlot)`.
+3. **Step 3 — Finishing Item (e.g., Mace / Axe)**: Sends `UpdateSelectedSlotC2SPacket(attackSlot)` immediately followed by `PlayerInteractEntityC2SPacket.attack(target, sneaking)` and `HandSwingC2SPacket`, applying Mace fall bonus damage + Breach / Density / Wind Burst (or Axe shield disable) on top of the Sword's cached base damage and cooldown!
+4. **Step 4 — Automatic Return to Start Slot**: Automatically returns selection to `startSlot` so your next swing starts with full Sword attributes armed again.
 
 ---
 
 ## Features
 
-- **Select When to Do It:**
-  - **Only When Target > 3 Blocks:** Seamless mode—performs standard attacks if the target is within 3.0 blocks, but automatically executes the triple swap if the target is between 3.0 and 4.5 blocks away.
-  - **On Attack (Auto):** Performs the triple swap on every attack when items are present.
-  - **Dedicated Keybind:** Trigger the triple swap on demand using a dedicated key (default: `R`).
-  - **Hold Trigger Key:** Normal attack performs triple swap only while holding the trigger key.
-  - **Quick Toggle:** Instant on/off toggle via keybind (default: `V`).
-
-- **Select What Items to Do It On:**
-  - **Fixed Hotbar Slots:** Explicitly choose slots 1–9 for Step 1 (Attributes), Step 2 (Reach), and Step 3 (Attack).
-  - **Auto-Detect by Item ID:** Scans your hotbar for items matching queries (e.g., `sword`, `spear`/`trident`, `mace`).
-
-- **In-Game GUI & Mod Menu Support:**
-  - Modern Cloth Config screen with category tabs, sliders, and tooltips.
-  - Opened via `H` or through Mod Menu.
-  - Adjust reach distance (3.5 to 5.0 blocks).
-  - Toggle HUD overlay showing current state and slot chain.
+- **Native 1.21.11 Spear & `AttackRangeComponent` Support**:
+  - Automatically reads `DataComponentTypes.ATTACK_RANGE` (`getEffectiveMaxRange(player)` and `hitboxMargin()`) directly from held/hotbar 1.21.11 Spears (`netherite_spear` through `wooden_spear`, plus custom data-pack weapons).
+  - Prioritizes highest material tier (`netherite` › `diamond` › `iron` › `copper` › `stone` › `golden` › `wooden`) when auto-detecting weapons by keyword.
+- **4 Trigger Activation Modes**:
+  - **Only When Target > 3 Blocks (`>3m AUTO`)**: Seamless mode—attacks normally inside `3.0m` and automatically triple-swaps on targets between `3.0m` and `4.5m`.
+  - **On Attack (`ALWAYS`)**: Executes the full triple-swap chain on every melee attack (including inside `0–3.0m`).
+  - **On Dedicated Keybind (`KEYBIND`)**: Executes on pressing the dedicated trigger hotkey (default `R`).
+  - **While Holding Key (`HOLD`)**: Automatically triggers whenever cooldown reaches `≥ 90%` while holding `R`.
+- **Bundled Cloth Config (`21.11.160`) + Mod Menu (`17.0.1`) Integration**:
+  - Embeds Cloth Config directly via Jar-in-Jar (`META-INF/jars`)—no separate Cloth Config download required.
+  - Full **Mod Menu** config screen integration plus built-in standalone `Screen` fallback.
+- **Modern 1.21.11 HUD Overlay (`HudElementRegistry`)**:
+  - Live weapon icon chain (`Start › Spear › Finish`) with active slot highlight, resolved reach readout, and real-time target distance & health bar card.
 
 ---
 
-## Controls (Default Keybindings)
+## Default Controls
 
-| Key | Action |
-|-----|--------|
-| `V` | Toggle Triple Swapping on / off |
-| `R` | Trigger Triple Swap attack / hold modifier |
-| `H` | Open Triple Swapping In-Game Configuration GUI |
-
----
-
-## Configuration File
-
-The mod automatically saves settings to `.minecraft/config/triple_swapping.json`:
-
-```json
-{
-  "enabled": true,
-  "triggerMode": "OUT_OF_RANGE_ONLY",
-  "selectionMode": "BY_HOTBAR_SLOT",
-  "startSlot": 0,
-  "reachSlot": 1,
-  "attackSlot": 2,
-  "startItemId": "minecraft:diamond_sword",
-  "reachItemId": "spear",
-  "attackItemId": "minecraft:mace",
-  "reachDistance": 4.5,
-  "normalReach": 3.0,
-  "clientDelayMs": 50,
-  "hudIndicator": true
-}
-```
+| Action | Default Key | Category |
+| :--- | :---: | :--- |
+| **Toggle Triple Swapping** | `V` | `Triple Swapping` |
+| **Trigger Triple Swap Attack** | `R` | `Triple Swapping` |
+| **Open Triple Swapping Config** | `O` | `Triple Swapping` |
 
 ---
 
-## Building and Developing
+## 1.21.11 Build Matrix
 
-### Prerequisites
-- Java 21 JDK
-- Internet access to download Gradle dependencies and Fabric Loom mappings
+| Dependency | Version |
+| :--- | :--- |
+| **Minecraft** | `1.21.11` |
+| **Yarn Mappings** | `1.21.11+build.6` |
+| **Fabric Loader** | `0.19.5` (compatible with `>=0.18.0`) |
+| **Fabric API** | `0.141.6+1.21.11` |
+| **Cloth Config (Bundled JiJ)** | `21.11.160` |
+| **Mod Menu** | `17.0.1` |
+| **Fabric Loom (`fabric-loom-remap`)** | `1.19.3` |
+| **Gradle / Java** | Gradle `9.7.1` / Java `21` |
 
-### Building the Mod JAR
-Run Gradle wrapper from the repository root:
+### Building from Source
 
 ```bash
-# Linux / macOS
 ./gradlew build
-
-# Windows
-gradlew.bat build
 ```
 
-The compiled mod JAR with embedded Cloth Config will be placed in `build/libs/`.
+The remapped release JAR (with Cloth Config bundled inside) is output to:
 
----
-
-## License
-
-This project is licensed under the MIT License.
+```text
+build/libs/triple-swapping-1.1.0.jar
+```

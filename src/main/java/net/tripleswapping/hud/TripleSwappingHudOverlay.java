@@ -1,172 +1,222 @@
 package net.tripleswapping.hud;
 
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.tripleswapping.config.TripleSwappingConfig;
 import net.tripleswapping.core.RaycastHelper;
 import net.tripleswapping.core.TripleSwapManager;
 
-/**
- * Modern HUD Overlay inspired by client-grade HUDs (pill cards, glass styling,
- * animated chain sequence, and dynamic target reach indicator).
- */
-public class TripleSwappingHudOverlay implements HudRenderCallback {
+public class TripleSwappingHudOverlay implements HudElement {
 
-    // Dark glass card colors
-    private static final int CARD_BG = 0xCC0E111A;
-    private static final int CARD_BORDER = 0x55384259;
-    private static final int PILL_BG_ENABLED = 0xEE1E824C;
-    private static final int PILL_BG_DISABLED = 0xEE96281B;
+    // Modern semi-transparent pill background and accents (32-bit ARGB for 1.21.11 DrawContext)
+    private static final int BG_CARD_COLOR = 0xAA101218;
+    private static final int BORDER_ACTIVE_COLOR = 0xFF34D399;   // Emerald green
+    private static final int BORDER_INACTIVE_COLOR = 0xFFEF4444; // Crimson red
+    private static final int BORDER_REACH_COLOR = 0xFF60A5FA;    // Sky blue
+    private static final int SLOT_HIGHLIGHT_BG = 0x44FFFFFF;     // Subtle active slot glow
+    private static final int TEXT_PRIMARY = 0xFFFFFFFF;
+    private static final int TEXT_SECONDARY = 0xFF9CA3AF;
 
     @Override
-    public void onHudRender(DrawContext drawContext, RenderTickCounter renderTickCounter) {
+    public void render(DrawContext context, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null || client.options.hudHidden) {
+        if (client.player == null || client.options.hudHidden) {
             return;
         }
 
-        TripleSwappingConfig config = TripleSwappingConfig.get();
-        if (!config.hudIndicator) {
+        TripleSwappingConfig config = TripleSwappingConfig.getInstance();
+        if (!config.showHudIndicator) {
             return;
         }
 
         TextRenderer tr = client.textRenderer;
+        ClientPlayerEntity player = client.player;
 
-        // -----------------------------------------------------------------
-        // 1. Watermark & Status Card (Top-Left)
-        // -----------------------------------------------------------------
-        int cardX = 8;
-        int cardY = 8;
-        int cardW = 168;
-        int cardH = config.enabled ? 50 : 24;
+        int padX = 8;
+        int padY = 8;
 
-        drawRoundedCard(drawContext, cardX, cardY, cardW, cardH, CARD_BG, CARD_BORDER);
-
-        // Header Title
-        drawContext.drawTextWithShadow(tr, Text.literal("§lTRIPLE SWAP§r"), cardX + 8, cardY + 7, 0xFFFFFFFF);
-
-        // Status Pill badge [ON] / [OFF]
-        int pillX = cardX + cardW - 36;
-        int pillY = cardY + 5;
-        int pillW = 28;
-        int pillH = 12;
-        int pillColor = config.enabled ? PILL_BG_ENABLED : PILL_BG_DISABLED;
-        drawRoundedCard(drawContext, pillX, pillY, pillW, pillH, pillColor, 0x44FFFFFF);
-        String statusLabel = config.enabled ? "ON" : "OFF";
-        int labelOffset = tr.getWidth(statusLabel) / 2;
-        drawContext.drawTextWithShadow(tr, Text.literal("§l" + statusLabel), pillX + (pillW / 2) - labelOffset, pillY + 2, 0xFFFFFFFF);
-
-        if (config.enabled) {
-            // Mode Subtitle
-            String modeStr = "§7Mode: §f" + config.triggerMode.getDisplayName();
-            drawContext.drawTextWithShadow(tr, Text.literal(modeStr), cardX + 8, cardY + 21, 0xFFCCCCCC);
-
-            // Active Weapon Chain with Item Slots
-            int s1 = TripleSwapManager.getInstance().resolveSlot(client, 1);
-            int s2 = TripleSwapManager.getInstance().resolveSlot(client, 2);
-            int s3 = TripleSwapManager.getInstance().resolveSlot(client, 3);
-
-            ItemStack stack1 = client.player.getInventory().getStack(s1);
-            ItemStack stack2 = client.player.getInventory().getStack(s2);
-            ItemStack stack3 = client.player.getInventory().getStack(s3);
-
-            int itemY = cardY + 31;
-            drawContext.drawItem(stack1, cardX + 8, itemY);
-            drawContext.drawTextWithShadow(tr, Text.literal(String.valueOf(s1 + 1)), cardX + 22, itemY + 5, 0xFFFFCC00);
-
-            drawContext.drawTextWithShadow(tr, Text.literal("§7➔§r"), cardX + 34, itemY + 5, 0xFF888888);
-
-            drawContext.drawItem(stack2, cardX + 46, itemY);
-            drawContext.drawTextWithShadow(tr, Text.literal(String.valueOf(s2 + 1)), cardX + 60, itemY + 5, 0xFF55FFFF);
-
-            drawContext.drawTextWithShadow(tr, Text.literal("§7➔§r"), cardX + 72, itemY + 5, 0xFF888888);
-
-            drawContext.drawItem(stack3, cardX + 84, itemY);
-            drawContext.drawTextWithShadow(tr, Text.literal(String.valueOf(s3 + 1)), cardX + 98, itemY + 5, 0xFFFF5555);
-
-            String reachSummary = String.format("§6[%.1fm]§r", config.reachDistance);
-            drawContext.drawTextWithShadow(tr, Text.literal(reachSummary), cardX + 118, itemY + 5, 0xFFFFAA00);
+        if (!config.enabled) {
+            renderDisabledPill(context, tr, padX, padY);
+            return;
         }
 
-        // -----------------------------------------------------------------
-        // 2. Dynamic Target Reach Card (Similar to TargetHUD in client overlays)
-        // -----------------------------------------------------------------
-        if (config.enabled) {
-            EntityHitResult hitResult = RaycastHelper.raycastEntity(client, config.reachDistance);
-            if (hitResult != null && hitResult.getType() == HitResult.Type.ENTITY) {
-                Entity target = hitResult.getEntity();
-                double dist = client.player.getCameraPosVec(1.0f).distanceTo(hitResult.getPos());
+        double effectiveReach = RaycastHelper.getEffectiveReachDistance(player, config);
 
-                int targetCardW = 150;
-                int targetCardH = 34;
-                int screenW = client.getWindow().getScaledWidth();
-                int screenH = client.getWindow().getScaledHeight();
+        // Render main active status card with resolved 1.21.11 weapon chain icons
+        int cardBottomY = renderMainStatusCard(context, tr, player, config, effectiveReach, padX, padY);
 
-                // Position slightly below crosshair center
-                int targetX = (screenW - targetCardW) / 2;
-                int targetY = (screenH / 2) + 32;
-
-                drawRoundedCard(drawContext, targetX, targetY, targetCardW, targetCardH, CARD_BG, 0x8800D2D3);
-
-                // Target Name & Distance
-                String targetName = target.getName().getString();
-                if (targetName.length() > 14) {
-                    targetName = targetName.substring(0, 12) + "..";
-                }
-                String title = String.format("§f%s §7(%.1fm)", targetName, dist);
-                drawContext.drawTextWithShadow(tr, Text.literal(title), targetX + 8, targetY + 6, 0xFFFFFFFF);
-
-                // Reach Status Badge
-                boolean isExtendedReach = dist > config.normalReach && dist <= config.reachDistance;
-                String badge;
-                int badgeColor;
-                if (dist <= config.normalReach) {
-                    badge = "§7[NORMAL RANGE]";
-                    badgeColor = 0xFF888888;
-                } else if (isExtendedReach) {
-                    badge = "§b⚡ TRIPLE SWAP REACH (+50%)";
-                    badgeColor = 0xFF00E5FF;
-                } else {
-                    badge = "§c[OUT OF REACH]";
-                    badgeColor = 0xFFFF5555;
-                }
-                drawContext.drawTextWithShadow(tr, Text.literal(badge), targetX + 8, targetY + 18, badgeColor);
-
-                // Health bar if LivingEntity
-                if (target instanceof LivingEntity living) {
-                    float hp = living.getHealth();
-                    float maxHp = living.getMaxHealth();
-                    float pct = Math.clamp(hp / maxHp, 0.0f, 1.0f);
-                    int barW = targetCardW - 16;
-                    int barY = targetY + targetCardH - 4;
-                    drawContext.fill(targetX + 8, barY, targetX + 8 + barW, barY + 2, 0x66000000);
-                    drawContext.fill(targetX + 8, barY, targetX + 8 + (int)(barW * pct), barY + 2, isExtendedReach ? 0xFF00E5FF : 0xFF2ECC71);
-                }
-            }
+        // Render live target reach card when a combat target is inside the 1.21.11 Spear reach window
+        RaycastHelper.TargetResult targetResult = RaycastHelper.findTargetInExtendedReach(client, effectiveReach);
+        if (targetResult != null && RaycastHelper.isAttackableTarget(targetResult.entity())) {
+            renderTargetReachCard(context, tr, targetResult, config, effectiveReach, padX, cardBottomY + 5);
         }
     }
 
     /**
-     * Renders a sleek rounded card with corner bevels and border stroke.
+     * Compact pill indicator when Triple Swapping is toggled off.
      */
-    private static void drawRoundedCard(DrawContext context, int x, int y, int w, int h, int bg, int border) {
-        // Main body fill
-        context.fill(x + 1, y, x + w - 1, y + h, bg);
-        context.fill(x, y + 1, x + w, y + h - 1, bg);
+    private void renderDisabledPill(DrawContext context, TextRenderer tr, int x, int y) {
+        String label = "Triple Swap: OFF";
+        int textWidth = tr.getWidth(label);
+        int width = textWidth + 16;
+        int height = 18;
 
-        // 1px Border outline
-        context.fill(x + 1, y, x + w - 1, y + 1, border);
-        context.fill(x + 1, y + h - 1, x + w - 1, y + h, border);
-        context.fill(x, y + 1, x + 1, y + h - 1, border);
-        context.fill(x + w - 1, y + 1, x + w, y + h - 1, border);
+        context.fill(x, y, x + width, y + height, BG_CARD_COLOR);
+        context.fill(x, y, x + 2, y + height, BORDER_INACTIVE_COLOR);
+        context.drawTextWithShadow(tr, Text.literal(label), x + 8, y + 5, 0xFFEF4444);
+    }
+
+    /**
+     * Renders modern main status pill card displaying:
+     * - Active badge & trigger mode
+     * - Real-time 1.21.11 weapon item icons for Start -> Spear -> Finish with active hotbar glow
+     * - Resolved slot chain & active Spear reach distance
+     */
+    private int renderMainStatusCard(
+            DrawContext context,
+            TextRenderer tr,
+            ClientPlayerEntity player,
+            TripleSwappingConfig config,
+            double effectiveReach,
+            int x,
+            int y
+    ) {
+        int[] slots = TripleSwapManager.getInstance().resolveSlots(player, config);
+        String modeLabel = getCompactTriggerLabel(config.triggerMode);
+
+        int cardWidth = 158;
+        int cardHeight = slots != null ? 54 : 36;
+
+        // Card container + emerald left accent stripe
+        context.fill(x, y, x + cardWidth, y + cardHeight, BG_CARD_COLOR);
+        context.fill(x, y, x + 2, y + cardHeight, BORDER_ACTIVE_COLOR);
+
+        // Header line: Status dot + Title + Mode badge
+        context.fill(x + 7, y + 7, x + 11, y + 11, BORDER_ACTIVE_COLOR);
+        context.drawTextWithShadow(tr, Text.literal("Triple Swap"), x + 15, y + 5, TEXT_PRIMARY);
+
+        int badgeWidth = tr.getWidth(modeLabel) + 6;
+        int badgeX = x + cardWidth - badgeWidth - 5;
+        context.fill(badgeX, y + 4, badgeX + badgeWidth, y + 14, 0x3334D399);
+        context.drawTextWithShadow(tr, Text.literal(modeLabel), badgeX + 3, y + 5, BORDER_ACTIVE_COLOR);
+
+        if (slots != null) {
+            int currentHeldSlot = player.getInventory().getSelectedSlot();
+            ItemStack startStack = player.getInventory().getStack(slots[0]);
+            ItemStack reachStack = player.getInventory().getStack(slots[1]);
+            ItemStack finishStack = player.getInventory().getStack(slots[2]);
+
+            int iconRowY = y + 18;
+            int iconStartX = x + 10;
+
+            // Step 1: Start Item (e.g. Sword — start-of-tick attributes)
+            renderStepItemBox(context, startStack, iconStartX, iconRowY, currentHeldSlot == slots[0]);
+            context.drawTextWithShadow(tr, Text.literal("›"), iconStartX + 21, iconRowY + 4, TEXT_SECONDARY);
+
+            // Step 2: Reach Item (1.21.11 Spear — AttackRangeComponent)
+            renderStepItemBox(context, reachStack, iconStartX + 30, iconRowY, currentHeldSlot == slots[1]);
+            context.drawTextWithShadow(tr, Text.literal("›"), iconStartX + 51, iconRowY + 4, TEXT_SECONDARY);
+
+            // Step 3: Finishing Item (e.g. Mace — Smash & Enchantments)
+            renderStepItemBox(context, finishStack, iconStartX + 60, iconRowY, currentHeldSlot == slots[2]);
+
+            // Subtle footer metadata line: Slot chain + resolved 1.21.11 reach
+            String slotInfo = String.format("Slots %d › %d › %d  •  %.1fm", slots[0] + 1, slots[1] + 1, slots[2] + 1, effectiveReach);
+            context.drawTextWithShadow(tr, Text.literal(slotInfo), x + 8, y + 41, TEXT_SECONDARY);
+        } else {
+            context.drawTextWithShadow(tr, Text.literal("⚠ Missing weapon in hotbar"), x + 8, y + 21, 0xFFFBBF24);
+        }
+
+        return y + cardHeight;
+    }
+
+    /**
+     * Renders an individual 18x18 step item icon frame with active highlight when currently held.
+     */
+    private void renderStepItemBox(DrawContext context, ItemStack stack, int x, int y, boolean isSelected) {
+        if (isSelected) {
+            context.fill(x - 1, y - 1, x + 17, y + 17, SLOT_HIGHLIGHT_BG);
+            context.fill(x - 1, y + 16, x + 17, y + 17, BORDER_ACTIVE_COLOR);
+        } else {
+            context.fill(x - 1, y - 1, x + 17, y + 17, 0x22000000);
+        }
+
+        if (!stack.isEmpty()) {
+            context.drawItem(stack, x, y);
+        }
+    }
+
+    /**
+     * Renders a dynamic target reach status pill card when aiming at an attackable entity inside Spear reach.
+     */
+    private void renderTargetReachCard(
+            DrawContext context,
+            TextRenderer tr,
+            RaycastHelper.TargetResult targetResult,
+            TripleSwappingConfig config,
+            double effectiveReach,
+            int x,
+            int y
+    ) {
+        Entity target = targetResult.entity();
+        double dist = targetResult.distance();
+        boolean inExtendedReach = dist > config.normalReach;
+
+        int accentColor = inExtendedReach ? BORDER_REACH_COLOR : BORDER_ACTIVE_COLOR;
+        int cardWidth = 158;
+        int cardHeight = 32;
+
+        context.fill(x, y, x + cardWidth, y + cardHeight, BG_CARD_COLOR);
+        context.fill(x, y, x + 2, y + cardHeight, accentColor);
+
+        String targetName = target.getName().getString();
+        if (targetName.length() > 14) {
+            targetName = targetName.substring(0, 13) + "…";
+        }
+        String distText = String.format("%.2fm", dist);
+
+        context.drawTextWithShadow(tr, Text.literal(targetName), x + 7, y + 5, TEXT_PRIMARY);
+
+        int distWidth = tr.getWidth(distText);
+        context.drawTextWithShadow(tr, Text.literal(distText), x + cardWidth - distWidth - 6, y + 5, accentColor);
+
+        if (target instanceof LivingEntity living && living.getMaxHealth() > 0.0f) {
+            float healthRatio = Math.max(0.0f, Math.min(1.0f, living.getHealth() / living.getMaxHealth()));
+            int barX = x + 7;
+            int barY = y + 18;
+            int barWidth = cardWidth - 14;
+            int filledWidth = (int) (barWidth * healthRatio);
+
+            context.fill(barX, barY, barX + barWidth, barY + 3, 0x44FFFFFF);
+            int barColor = inExtendedReach ? BORDER_REACH_COLOR : BORDER_ACTIVE_COLOR;
+            if (filledWidth > 0) {
+                context.fill(barX, barY, barX + filledWidth, barY + 3, barColor);
+            }
+
+            String rangeTag = inExtendedReach
+                    ? String.format("Spear Reach (%.1f–%.1fm)", config.normalReach, effectiveReach)
+                    : "Normal Melee (≤" + String.format("%.1fm", config.normalReach) + ")";
+            context.drawTextWithShadow(tr, Text.literal(rangeTag), barX, barY + 5, TEXT_SECONDARY);
+        } else {
+            String rangeStatus = inExtendedReach ? "Spear Extended Reach" : "Normal Melee Range";
+            context.drawTextWithShadow(tr, Text.literal(rangeStatus), x + 7, y + 18, accentColor);
+        }
+    }
+
+    private String getCompactTriggerLabel(TripleSwappingConfig.TriggerMode mode) {
+        return switch (mode) {
+            case OUT_OF_NORMAL_RANGE -> ">3m AUTO";
+            case ON_ATTACK -> "ALWAYS";
+            case KEYBIND -> "KEYBIND";
+            case HOLD_KEY -> "HOLD";
+        };
     }
 }

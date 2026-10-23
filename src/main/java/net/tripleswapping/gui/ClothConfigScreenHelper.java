@@ -7,151 +7,185 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.tripleswapping.config.TripleSwappingConfig;
 
-/**
- * Builds a modern, polished configuration screen using the Cloth Config library.
- * This public library provides categories, smooth sliders, tooltips, validation,
- * and clean UI styling native to modern Minecraft modding.
- */
 public class ClothConfigScreenHelper {
 
-    public static Screen createConfigScreen(Screen parent) {
-        TripleSwappingConfig config = TripleSwappingConfig.get();
+    public static Screen createClothConfigScreen(Screen parent) {
+        TripleSwappingConfig config = TripleSwappingConfig.getInstance();
 
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(parent)
                 .setTitle(Text.translatable("text.triple_swapping.title"));
 
+        builder.setSavingRunnable(TripleSwappingConfig::save);
+
         ConfigEntryBuilder entryBuilder = builder.entryBuilder();
 
-        // ---------------------------------------------------------
-        // Category 1: General & Combat Trigger
-        // ---------------------------------------------------------
-        ConfigCategory generalCategory = builder.getOrCreateCategory(
-                Text.translatable("category.triple_swapping.general")
-        );
+        // 1. General & Combat Category
+        ConfigCategory general = builder.getOrCreateCategory(Text.translatable("category.triple_swapping.general"));
 
-        // Master Toggle
-        generalCategory.addEntry(entryBuilder.startBooleanToggle(
-                        Text.translatable("text.triple_swapping.enabled"), config.enabled)
+        general.addEntry(entryBuilder.startBooleanToggle(Text.translatable("text.triple_swapping.enabled"), config.enabled)
                 .setDefaultValue(true)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.enabled"))
                 .setSaveConsumer(newValue -> config.enabled = newValue)
                 .build());
 
-        // Trigger Mode Selector
-        generalCategory.addEntry(entryBuilder.startEnumSelector(
+        general.addEntry(entryBuilder.startEnumSelector(
                         Text.translatable("text.triple_swapping.trigger_mode"),
                         TripleSwappingConfig.TriggerMode.class,
                         config.triggerMode)
-                .setDefaultValue(TripleSwappingConfig.TriggerMode.OUT_OF_RANGE_ONLY)
+                .setDefaultValue(TripleSwappingConfig.TriggerMode.OUT_OF_NORMAL_RANGE)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.trigger_mode"))
+                .setEnumNameProvider(enumValue -> {
+                    TripleSwappingConfig.TriggerMode mode = (TripleSwappingConfig.TriggerMode) enumValue;
+                    return switch (mode) {
+                        case ON_ATTACK -> Text.translatable("text.triple_swapping.trigger_mode.on_attack");
+                        case KEYBIND -> Text.translatable("text.triple_swapping.trigger_mode.keybind");
+                        case HOLD_KEY -> Text.translatable("text.triple_swapping.trigger_mode.hold_key");
+                        case OUT_OF_NORMAL_RANGE -> Text.translatable("text.triple_swapping.trigger_mode.out_of_range");
+                    };
+                })
                 .setSaveConsumer(newValue -> config.triggerMode = newValue)
                 .build());
 
-        // Extended Reach Distance Slider (3.0 to 6.0 blocks)
-        generalCategory.addEntry(entryBuilder.startDoubleField(
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        Text.translatable("text.triple_swapping.use_attack_range_component"),
+                        config.useItemAttackRangeComponent)
+                .setDefaultValue(true)
+                .setTooltip(Text.translatable("tooltip.triple_swapping.use_attack_range_component"))
+                .setSaveConsumer(newValue -> config.useItemAttackRangeComponent = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startDoubleField(
                         Text.translatable("text.triple_swapping.reach_distance"),
                         config.reachDistance)
                 .setDefaultValue(4.5)
                 .setMin(3.0)
-                .setMax(6.0)
+                .setMax(6.5)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.reach_distance"))
                 .setSaveConsumer(newValue -> config.reachDistance = newValue)
                 .build());
 
-        // Client Transition Delay Window (ms)
-        generalCategory.addEntry(entryBuilder.startIntSlider(
+        general.addEntry(entryBuilder.startDoubleField(
+                        Text.translatable("text.triple_swapping.hitbox_margin"),
+                        config.hitboxMargin)
+                .setDefaultValue(0.125)
+                .setMin(0.0)
+                .setMax(0.5)
+                .setTooltip(Text.translatable("tooltip.triple_swapping.hitbox_margin"))
+                .setSaveConsumer(newValue -> config.hitboxMargin = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startBooleanToggle(
+                        Text.translatable("text.triple_swapping.auto_swap_back"),
+                        config.autoSwapBack)
+                .setDefaultValue(true)
+                .setTooltip(Text.translatable("tooltip.triple_swapping.auto_swap_back"))
+                .setSaveConsumer(newValue -> config.autoSwapBack = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startIntSlider(
+                        Text.translatable("text.triple_swapping.swap_back_delay"),
+                        config.swapBackDelayTicks,
+                        0,
+                        5)
+                .setDefaultValue(1)
+                .setTooltip(Text.translatable("tooltip.triple_swapping.swap_back_delay"))
+                .setSaveConsumer(newValue -> config.swapBackDelayTicks = newValue)
+                .build());
+
+        general.addEntry(entryBuilder.startIntSlider(
                         Text.translatable("text.triple_swapping.client_delay"),
-                        config.clientDelayMs, 10, 100)
+                        config.clientSwapDelayMs,
+                        0,
+                        250)
                 .setDefaultValue(50)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.client_delay"))
-                .setSaveConsumer(newValue -> config.clientDelayMs = newValue)
+                .setSaveConsumer(newValue -> config.clientSwapDelayMs = newValue)
                 .build());
 
-        // ---------------------------------------------------------
-        // Category 2: Weapon & Slot Setup
-        // ---------------------------------------------------------
-        ConfigCategory weaponCategory = builder.getOrCreateCategory(
-                Text.translatable("category.triple_swapping.weapons")
-        );
+        // 2. Weapon & Slot Configuration Category
+        ConfigCategory weapons = builder.getOrCreateCategory(Text.translatable("category.triple_swapping.weapons"));
 
-        // Selection Mode (Hotbar Slot vs Item ID)
-        weaponCategory.addEntry(entryBuilder.startEnumSelector(
+        weapons.addEntry(entryBuilder.startEnumSelector(
                         Text.translatable("text.triple_swapping.slot_mode"),
-                        TripleSwappingConfig.SelectionMode.class,
-                        config.selectionMode)
-                .setDefaultValue(TripleSwappingConfig.SelectionMode.BY_HOTBAR_SLOT)
+                        TripleSwappingConfig.SlotMode.class,
+                        config.slotMode)
+                .setDefaultValue(TripleSwappingConfig.SlotMode.HOTBAR_SLOTS)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.slot_mode"))
-                .setSaveConsumer(newValue -> config.selectionMode = newValue)
+                .setEnumNameProvider(enumValue -> {
+                    TripleSwappingConfig.SlotMode mode = (TripleSwappingConfig.SlotMode) enumValue;
+                    return switch (mode) {
+                        case HOTBAR_SLOTS -> Text.translatable("text.triple_swapping.slot_mode.hotbar_slots");
+                        case ITEM_IDS -> Text.translatable("text.triple_swapping.slot_mode.item_ids");
+                    };
+                })
+                .setSaveConsumer(newValue -> config.slotMode = newValue)
                 .build());
 
-        // Subcategory / entries for Hotbar Slots (1-9)
-        weaponCategory.addEntry(entryBuilder.startIntSlider(
+        weapons.addEntry(entryBuilder.startIntSlider(
                         Text.translatable("text.triple_swapping.start_slot"),
-                        config.startSlot + 1, 1, 9)
+                        config.startSlot,
+                        1,
+                        9)
                 .setDefaultValue(1)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.start_slot"))
-                .setSaveConsumer(val -> config.startSlot = val - 1)
+                .setSaveConsumer(newValue -> config.startSlot = newValue)
                 .build());
 
-        weaponCategory.addEntry(entryBuilder.startIntSlider(
+        weapons.addEntry(entryBuilder.startIntSlider(
                         Text.translatable("text.triple_swapping.reach_slot"),
-                        config.reachSlot + 1, 1, 9)
+                        config.reachSlot,
+                        1,
+                        9)
                 .setDefaultValue(2)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.reach_slot"))
-                .setSaveConsumer(val -> config.reachSlot = val - 1)
+                .setSaveConsumer(newValue -> config.reachSlot = newValue)
                 .build());
 
-        weaponCategory.addEntry(entryBuilder.startIntSlider(
+        weapons.addEntry(entryBuilder.startIntSlider(
                         Text.translatable("text.triple_swapping.attack_slot"),
-                        config.attackSlot + 1, 1, 9)
+                        config.attackSlot,
+                        1,
+                        9)
                 .setDefaultValue(3)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.attack_slot"))
-                .setSaveConsumer(val -> config.attackSlot = val - 1)
+                .setSaveConsumer(newValue -> config.attackSlot = newValue)
                 .build());
 
-        // Dynamic Item Identifiers
-        weaponCategory.addEntry(entryBuilder.startStrField(
+        weapons.addEntry(entryBuilder.startStrField(
                         Text.translatable("text.triple_swapping.start_item_id"),
                         config.startItemId)
-                .setDefaultValue("minecraft:diamond_sword")
+                .setDefaultValue("sword")
                 .setTooltip(Text.translatable("tooltip.triple_swapping.start_item_id"))
-                .setSaveConsumer(val -> config.startItemId = val)
+                .setSaveConsumer(newValue -> config.startItemId = newValue)
                 .build());
 
-        weaponCategory.addEntry(entryBuilder.startStrField(
+        weapons.addEntry(entryBuilder.startStrField(
                         Text.translatable("text.triple_swapping.reach_item_id"),
                         config.reachItemId)
                 .setDefaultValue("spear")
                 .setTooltip(Text.translatable("tooltip.triple_swapping.reach_item_id"))
-                .setSaveConsumer(val -> config.reachItemId = val)
+                .setSaveConsumer(newValue -> config.reachItemId = newValue)
                 .build());
 
-        weaponCategory.addEntry(entryBuilder.startStrField(
+        weapons.addEntry(entryBuilder.startStrField(
                         Text.translatable("text.triple_swapping.attack_item_id"),
                         config.attackItemId)
                 .setDefaultValue("minecraft:mace")
                 .setTooltip(Text.translatable("tooltip.triple_swapping.attack_item_id"))
-                .setSaveConsumer(val -> config.attackItemId = val)
+                .setSaveConsumer(newValue -> config.attackItemId = newValue)
                 .build());
 
-        // ---------------------------------------------------------
-        // Category 3: Visuals & HUD
-        // ---------------------------------------------------------
-        ConfigCategory visualCategory = builder.getOrCreateCategory(
-                Text.translatable("category.triple_swapping.visuals")
-        );
+        // 3. Visuals & HUD Category
+        ConfigCategory visuals = builder.getOrCreateCategory(Text.translatable("category.triple_swapping.visuals"));
 
-        visualCategory.addEntry(entryBuilder.startBooleanToggle(
+        visuals.addEntry(entryBuilder.startBooleanToggle(
                         Text.translatable("text.triple_swapping.hud_indicator"),
-                        config.hudIndicator)
+                        config.showHudIndicator)
                 .setDefaultValue(true)
                 .setTooltip(Text.translatable("tooltip.triple_swapping.hud_indicator"))
-                .setSaveConsumer(val -> config.hudIndicator = val)
+                .setSaveConsumer(newValue -> config.showHudIndicator = newValue)
                 .build());
-
-        // Save callback
-        builder.setSavingRunnable(config::save);
 
         return builder.build();
     }
