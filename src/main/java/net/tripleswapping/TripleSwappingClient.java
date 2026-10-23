@@ -17,7 +17,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class TripleSwappingClient implements ClientModInitializer {
     public static final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category.create(
-            Identifier.of(TripleSwappingMod.MOD_ID, "main")
+            Identifier.of(TripleSwappingMod.ASSET_NAMESPACE, "main")
     );
 
     public static final Identifier HUD_LAYER_ID = Identifier.of(TripleSwappingMod.MOD_ID, "hud_overlay");
@@ -92,6 +92,6 @@ public class TripleSwappingClient implements ClientModInitializer {
             }
         });
 
-        TripleSwappingMod.LOGGER.info("Triple Swapping Client (1.21.11) initialized successfully!");
+        TripleSwappingMod.LOGGER.info("Iris client initialized.");
     }
 }

@@ -1,6 +1,4 @@
 {
-  "modmenu.nameTranslation.triple_swapping": "Triple Swapping",
-  "modmenu.descriptionTranslation.triple_swapping": "Execute 1.21.11 triple weapon swapping to combine start-of-tick attributes, Spear extended reach (4.5m + hitbox margin), and finishing weapon damage & enchantments.",
   "key.category.triple_swapping": "Triple Swapping",
   "key.category.triple_swapping.main": "Triple Swapping",
   "key.triple_swapping.toggle": "Toggle Triple Swapping",
