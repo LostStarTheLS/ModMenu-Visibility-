@@ -237,7 +237,7 @@ public class TripleSwapManager {
 
             // Phase 4: Dispatch melee attack & main-hand swing within the same tick window
             netHandler.sendPacket(PlayerInteractEntityC2SPacket.attack(target, player.isSneaking()));
-            player.resetLastAttackedTicks();
+            player.resetTicksSinceLastAttack();
             player.swingHand(Hand.MAIN_HAND);
 
             // Phase 5: Return to Start Slot (same-tick if delay == 0, or on subsequent client tick)
